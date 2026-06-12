@@ -116,6 +116,109 @@
         }
       },
       "required": ["userId", "commanderName", "message", "createdAt"]
+    },
+    "Lobby": {
+      "title": "Lobby",
+      "description": "Real-time competitive multiplayer game lobby",
+      "type": "object",
+      "properties": {
+        "roomName": {
+          "type": "string",
+          "description": "Custom name of the fight room"
+        },
+        "chapter": {
+          "type": "integer",
+          "description": "Story sector chapter to compete on"
+        },
+        "stageTitle": {
+          "type": "string",
+          "description": "Story sector title"
+        },
+        "status": {
+          "type": "string",
+          "description": "Lobby system state (waiting, playing, finished)"
+        },
+        "hostId": {
+          "type": "string",
+          "description": "UID of the lobby host creator"
+        },
+        "hostName": {
+          "type": "string",
+          "description": "Callsign of the host"
+        },
+        "hostScore": {
+          "type": "integer",
+          "description": "Current live score of host inside gameplay"
+        },
+        "hostLives": {
+          "type": "integer",
+          "description": "Current live pilot ship lives remaining"
+        },
+        "hostY": {
+          "type": "integer",
+          "description": "Real-time Y coordinate of host pilot"
+        },
+        "hostReady": {
+          "type": "boolean",
+          "description": "Ready confirmation status"
+        },
+        "hostFinished": {
+          "type": "boolean",
+          "description": "Match complete check"
+        },
+        "guestId": {
+          "type": "string",
+          "description": "UID of the challenger player"
+        },
+        "guestName": {
+          "type": "string",
+          "description": "Callsign of challenger"
+        },
+        "guestScore": {
+          "type": "integer",
+          "description": "Current score of challenger"
+        },
+        "guestLives": {
+          "type": "integer",
+          "description": "Challenger remaining pilot lives"
+        },
+        "guestY": {
+          "type": "integer",
+          "description": "Real-time Y coordinate of challenger pilot"
+        },
+        "guestReady": {
+          "type": "boolean",
+          "description": "Challenger ready check"
+        },
+        "guestFinished": {
+          "type": "boolean",
+          "description": "Match complete status"
+        },
+        "winnerId": {
+          "type": "string",
+          "description": "Declaired winner UID"
+        },
+        "winnerName": {
+          "type": "string",
+          "description": "Callsign of winning pilot"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Lobby creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Lobby modification timestamp"
+        }
+      },
+      "required": [
+        "roomName", "chapter", "stageTitle", "status",
+        "hostId", "hostName", "hostScore", "hostLives", "hostY", "hostReady", "hostFinished",
+        "guestId", "guestName", "guestScore", "guestLives", "guestY", "guestReady", "guestFinished",
+        "winnerId", "winnerName", "createdAt", "updatedAt"
+      ]
     }
   },
   "firestore": {
@@ -134,6 +237,10 @@
     "/chat/{messageId}": {
       "schema": "ChatMessage",
       "description": "Global live combat channel chat log"
+    },
+    "/lobbies/{lobbyId}": {
+      "schema": "Lobby",
+      "description": "Paths for real-time competitive match lobbies"
     }
   }
 }

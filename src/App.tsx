@@ -17,6 +17,10 @@ export default function App() {
   const [activeStage, setActiveStage] = useState<StoryStage | null>(null);
   const [activeBuff, setActiveBuff] = useState<StageBuff | null>(null);
 
+  // Real-time battle state parameters
+  const [activeLobbyId, setActiveLobbyId] = useState<string>("");
+  const [playerRole, setPlayerRole] = useState<"host" | "guest" | "">("");
+
   // Ghost duel challenger parameters
   const [opponentGhostFrames, setOpponentGhostFrames] = useState<string>("");
   const [opponentName, setOpponentName] = useState<string>("");
@@ -129,6 +133,42 @@ export default function App() {
     setActiveView(GameView.GAMEPLAY);
   };
 
+  // Launch synchronous competitive matchroom duel
+  const handleStartLobbyBattle = (lobbyId: string, role: "host" | "guest", stage: StoryStage) => {
+    setActiveLobbyId(lobbyId);
+    setPlayerRole(role);
+    setActiveStage(stage);
+    setActiveBuff(null);
+    setOpponentGhostFrames("");
+    setOpponentName("");
+    setOpponentScore(0);
+    setActiveView(GameView.GAMEPLAY);
+  };
+
+  // Safe multiplayer exit and cleanup
+  const handleExitLobbyBattle = async () => {
+    if (activeLobbyId && playerRole) {
+      const lobbyRef = doc(db, "lobbies", activeLobbyId);
+      try {
+        if (playerRole === "host") {
+          await setDoc(lobbyRef, { status: "finished" }, { merge: true });
+        } else {
+          await setDoc(lobbyRef, {
+            guestId: "",
+            guestName: "",
+            guestReady: false,
+            guestFinished: true
+          }, { merge: true });
+        }
+      } catch (err) {
+        console.warn("Could not clean up lobby on exit:", err);
+      }
+    }
+    setActiveLobbyId("");
+    setPlayerRole("");
+    setActiveView(GameView.ONLINE_LOBBY);
+  };
+
   // Complete Active Gameplay
   const handleGameFinished = async (finalScore: number, progressedChapter: number, ghostFramesStr: string) => {
     setLastScore(finalScore);
@@ -207,6 +247,8 @@ export default function App() {
       }
       setSaveStatus("Offline backup logs saved locally! Login to register on global rankings.");
     }
+    setActiveLobbyId("");
+    setPlayerRole("");
   };
 
   return (
@@ -338,6 +380,7 @@ export default function App() {
               commanderName={commanderName}
               onSetCommanderName={handleUpdateCallsighName}
               onChallengeGhost={handleStartGhostDuel}
+              onStartLobbyBattle={handleStartLobbyBattle}
             />
           </motion.div>
         )}
@@ -356,10 +399,12 @@ export default function App() {
               stage={activeStage}
               buff={activeBuff}
               onGameFinished={handleGameFinished}
-              onExit={() => setActiveView(GameView.MAIN_MENU)}
+              onExit={handleExitLobbyBattle}
               opponentGhostFrames={opponentGhostFrames}
               opponentName={opponentName}
               opponentScore={opponentScore}
+              activeLobbyId={activeLobbyId}
+              playerRole={playerRole}
             />
           </motion.div>
         )}

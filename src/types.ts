@@ -23,6 +23,32 @@ export interface LeaderboardEntry {
   createdAt: any;
 }
 
+export interface LobbyRoom {
+  id: string;
+  roomName: string;
+  chapter: number;
+  stageTitle: string;
+  status: "waiting" | "playing" | "finished";
+  hostId: string;
+  hostName: string;
+  hostScore: number;
+  hostLives: number;
+  hostY: number;
+  hostReady: boolean;
+  hostFinished: boolean;
+  guestId: string;
+  guestName: string;
+  guestScore: number;
+  guestLives: number;
+  guestY: number;
+  guestReady: boolean;
+  guestFinished: boolean;
+  winnerId: string;
+  winnerName: string;
+  createdAt: any;
+  updatedAt: any;
+}
+
 export interface GhostFrame {
   y: number;          // Ship's relative Y coordinate (0 to 100 or actual coordinate)
   fire: boolean;      // Did the player fire this frame

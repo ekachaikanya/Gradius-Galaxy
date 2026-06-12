@@ -121,5 +121,47 @@ service cloud.firestore {
           && data.createdAt == request.time;
       }
     }
+
+    // 5. Match Lobbies (/lobbies/{lobbyId})
+    match /lobbies/{lobbyId} {
+      allow list, get: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(lobbyId) && incoming().hostId == request.auth.uid && isValidLobby(incoming());
+      allow update: if isSignedIn() && isValidId(lobbyId) && (existing().hostId == request.auth.uid || existing().guestId == request.auth.uid || existing().guestId == "" || existing().guestId == null) && isValidLobby(incoming());
+      allow delete: if isSignedIn() && isValidId(lobbyId) && existing().hostId == request.auth.uid;
+
+      function isValidLobby(data) {
+        return data.keys().hasAll([
+          'roomName', 'chapter', 'stageTitle', 'status',
+          'hostId', 'hostName', 'hostScore', 'hostLives', 'hostY', 'hostReady', 'hostFinished',
+          'guestId', 'guestName', 'guestScore', 'guestLives', 'guestY', 'guestReady', 'guestFinished',
+          'winnerId', 'winnerName', 'createdAt', 'updatedAt'
+        ])
+          && data.keys().size() == 21
+          && data.roomName is string
+          && data.roomName.size() >= 2
+          && data.roomName.size() <= 32
+          && data.chapter is int
+          && data.stageTitle is string
+          && data.status is string
+          && data.hostId is string
+          && data.hostName is string
+          && data.hostScore is int
+          && data.hostLives is int
+          && data.hostY is int
+          && data.hostReady is bool
+          && data.hostFinished is bool
+          && data.guestId is string
+          && data.guestName is string
+          && data.guestScore is int
+          && data.guestLives is int
+          && data.guestY is int
+          && data.guestReady is bool
+          && data.guestFinished is bool
+          && data.winnerId is string
+          && data.winnerName is string
+          && data.createdAt is timestamp
+          && data.updatedAt is timestamp;
+      }
+    }
   }
 }

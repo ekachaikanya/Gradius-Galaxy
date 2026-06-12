@@ -1,4 +1,6 @@
 import React, { useRef, useEffect, useState, useMemo } from "react";
+import { doc, setDoc, onSnapshot } from "firebase/firestore";
+import { db } from "../firebase";
 import { 
   GameView, 
   PilotProfile, 
@@ -12,7 +14,8 @@ import {
   EnemyBullet,
   PowerUpCapsule,
   GameParticle,
-  ScrollingStar
+  ScrollingStar,
+  LobbyRoom
 } from "../types";
 
 // Sound Synthesizer using Web Audio API (Zero-dependency arcade sounds)
@@ -226,6 +229,8 @@ interface GradiusGameProps {
   opponentGhostFrames?: string; // If competing
   opponentName?: string;
   opponentScore?: number;
+  activeLobbyId?: string;
+  playerRole?: "host" | "guest" | "";
 }
 
 export default function GradiusGame({
@@ -236,7 +241,9 @@ export default function GradiusGame({
   onExit,
   opponentGhostFrames,
   opponentName,
-  opponentScore
+  opponentScore,
+  activeLobbyId,
+  playerRole
 }: GradiusGameProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -310,6 +317,95 @@ export default function GradiusGame({
   const ghostPos = useRef<Position>({ x: 100, y: 250 });
   const ghostIndex = useRef<number>(0);
   const ghostBulletList = useRef<Bullet[]>([]);
+
+  // Real-time competitive lobby states & refs
+  const [liveLobbyState, setLiveLobbyState] = useState<LobbyRoom | null>(null);
+  const opponentY = useRef<number>(250);
+  const opponentScoreVal = useRef<number>(0);
+  const opponentLivesVal = useRef<number>(3);
+  const opponentFinishedVal = useRef<boolean>(false);
+  const lastSyncTick = useRef<number>(0);
+
+  // Firestore Snapshot link for real-time duels
+  useEffect(() => {
+    if (!activeLobbyId || !playerRole) return;
+
+    const lobbyRef = doc(db, "lobbies", activeLobbyId);
+    const unsub = onSnapshot(lobbyRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data() as LobbyRoom;
+        setLiveLobbyState(data);
+        
+        // Feed real-time coordinates to rendering refs
+        if (playerRole === "host") {
+          opponentY.current = data.guestY ?? 250;
+          opponentScoreVal.current = data.guestScore ?? 0;
+          opponentLivesVal.current = data.guestLives ?? 3;
+          opponentFinishedVal.current = data.guestFinished ?? false;
+        } else {
+          opponentY.current = data.hostY ?? 250;
+          opponentScoreVal.current = data.hostScore ?? 0;
+          opponentLivesVal.current = data.hostLives ?? 3;
+          opponentFinishedVal.current = data.hostFinished ?? false;
+        }
+
+        // If both finished, check result and complete match
+        if (data.hostFinished && data.guestFinished && data.status !== "finished") {
+          const hostScoreVal = data.hostScore;
+          const guestScoreVal = data.guestScore;
+          let winId = "";
+          let winName = "";
+          
+          if (hostScoreVal > guestScoreVal) {
+            winId = data.hostId;
+            winName = data.hostName;
+          } else if (guestScoreVal > hostScoreVal) {
+            winId = data.guestId;
+            winName = data.guestName;
+          } else {
+            winId = "draw";
+            winName = "Draw Match";
+          }
+
+          if (playerRole === "host") {
+            setDoc(lobbyRef, {
+              status: "finished",
+              winnerId: winId,
+              winnerName: winName,
+              updatedAt: new Date()
+            }, { merge: true }).catch(console.error);
+          }
+        }
+      }
+    });
+
+    return unsub;
+  }, [activeLobbyId, playerRole]);
+
+  // Method to push our current coordinates/lives/scores to Firebase Lobby room
+  const syncLobbyPosition = async () => {
+    if (!activeLobbyId || !playerRole) return;
+    const lobbyRef = doc(db, "lobbies", activeLobbyId);
+    try {
+      if (playerRole === "host") {
+        await setDoc(lobbyRef, {
+          hostScore: shipScore.current,
+          hostLives: shipLives.current,
+          hostY: Math.round(shipPos.current.y),
+          updatedAt: new Date()
+        }, { merge: true });
+      } else {
+        await setDoc(lobbyRef, {
+          guestScore: shipScore.current,
+          guestLives: shipLives.current,
+          guestY: Math.round(shipPos.current.y),
+          updatedAt: new Date()
+        }, { merge: true });
+      }
+    } catch (err) {
+      console.warn("Failed to sync status:", err);
+    }
+  };
 
   // Sync state initially with buffs applied by Gemini story briefing
   useEffect(() => {
@@ -435,6 +531,11 @@ export default function GradiusGame({
       if (!isPlaying) return;
 
       ticksPassed.current += 1;
+
+      // Sync real-time tournament details
+      if (activeLobbyId && playerRole && ticksPassed.current % 15 === 0) {
+        syncLobbyPosition();
+      }
 
       // Invincible tick tick
       if (invincibleTicks.current > 0) {
@@ -1177,6 +1278,38 @@ export default function GradiusGame({
         });
       }
 
+      // E2. Draw Live Online Multiplayer Challenger Ghost
+      if (activeLobbyId && playerRole && liveLobbyState) {
+        const livesLeft = (playerRole === "host") ? (liveLobbyState.guestLives ?? 3) : (liveLobbyState.hostLives ?? 3);
+        const hasFinished = (playerRole === "host") ? (liveLobbyState.guestFinished ?? false) : (liveLobbyState.hostFinished ?? false);
+        const nameText = (playerRole === "host") ? (liveLobbyState.guestName || "GUEST") : (liveLobbyState.hostName || "HOST");
+        const currentOpponentScore = (playerRole === "host") ? (liveLobbyState.guestScore ?? 0) : (liveLobbyState.hostScore ?? 0);
+
+        if (livesLeft > 0 && !hasFinished) {
+          ctx.save();
+          ctx.globalAlpha = 0.55; // Semi-transparent spectral presence
+          
+          // Render orange glowing challenger Vic Viper model
+          ctx.fillStyle = "#ff6b00";
+          ctx.strokeStyle = "#e11d48";
+          ctx.beginPath();
+          ctx.moveTo(110, opponentY.current); // Fixed x offset so both players run parallel lines!
+          ctx.lineTo(80, opponentY.current - 12);
+          ctx.lineTo(88, opponentY.current);
+          ctx.lineTo(80, opponentY.current + 12);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.restore();
+          
+          // Draw tag text above the opponent's spaceship
+          ctx.fillStyle = "rgba(251, 146, 60, 0.9)";
+          ctx.font = "bold 9px 'JetBrains Mono', monospace";
+          ctx.fillText(`⚔️ ${nameText.toUpperCase()}: ${currentOpponentScore.toLocaleString()}`, 70, opponentY.current - 16);
+        }
+      }
+
       // F. Draw Options (glowing energy trailing units)
       for (let o = 1; o <= optionCount.current; o++) {
         const trailIdx = Math.max(0, shipHistory.current.length - 1 - o * 18);
@@ -1456,9 +1589,34 @@ export default function GradiusGame({
       }
     };
 
+    const finishLobbyBattleSync = async (scoreVal: number) => {
+      if (activeLobbyId && playerRole) {
+        const lobbyRef = doc(db, "lobbies", activeLobbyId);
+        try {
+          if (playerRole === "host") {
+            await setDoc(lobbyRef, {
+              hostScore: scoreVal,
+              hostFinished: true,
+              updatedAt: new Date()
+            }, { merge: true });
+          } else {
+            await setDoc(lobbyRef, {
+              guestScore: scoreVal,
+              guestFinished: true,
+              updatedAt: new Date()
+            }, { merge: true });
+          }
+        } catch (err) {
+          console.warn("Could not save final multiplayer score sync:", err);
+        }
+      }
+    };
+
     const handleGameOver = () => {
       setIsPlaying(false);
       cancelAnimationFrame(animationFrameId);
+
+      finishLobbyBattleSync(shipScore.current);
 
       // Compact the flight replay array to a semicolon list
       const ghostFramesText = loggedGhostFrames.current.join(";");
@@ -1468,6 +1626,8 @@ export default function GradiusGame({
     const handleVictory = () => {
       setIsPlaying(false);
       cancelAnimationFrame(animationFrameId);
+
+      finishLobbyBattleSync(shipScore.current);
 
       // Compact the flight replay array to a semicolon list
       const ghostFramesText = loggedGhostFrames.current.join(";");

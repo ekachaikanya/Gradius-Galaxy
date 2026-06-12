@@ -1,0 +1,6 @@
+{
+  "name": "Gradius Online & Story Arena",
+  "description": "Gradius-style horizontal space shooter with an exciting server-side story mode and an online competitive ghost replay arena",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

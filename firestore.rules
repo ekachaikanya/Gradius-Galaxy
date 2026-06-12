@@ -1,0 +1,125 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper: Verify if user is authenticated
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Helper: Validates basic ID strings to prevent pollution attacks
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Helper: Extracts resource data from incoming write request safely
+    function incoming() {
+      return request.resource.data;
+    }
+
+    // Helper: Extracts data from the existing Document
+    function existing() {
+      return resource.data;
+    }
+
+    // 1. User Profiles (/profiles/{userId})
+    match /profiles/{userId} {
+      allow get: if isSignedIn() && isValidId(userId);
+      allow create: if isSignedIn() && isValidId(userId) && request.auth.uid == userId && isValidProfile(incoming());
+      allow update: if isSignedIn() && isValidId(userId) && request.auth.uid == userId && isValidProfile(incoming());
+      allow delete: if false; // Profiles are permanent
+
+      function isValidProfile(data) {
+        return data.keys().hasAll(['commanderName', 'highScore', 'storyProgress', 'createdAt', 'updatedAt'])
+          && data.keys().size() == 5
+          && data.commanderName is string
+          && data.commanderName.size() >= 2
+          && data.commanderName.size() <= 20
+          && data.highScore is int
+          && data.highScore >= 0
+          && data.highScore <= 100000000
+          && data.storyProgress is int
+          && data.storyProgress >= 0
+          && data.storyProgress <= 20
+          && data.createdAt is timestamp
+          && data.updatedAt == request.time;
+      }
+    }
+
+    // 2. Leaderboard Entry (/leaderboard/{scoreId})
+    match /leaderboard/{scoreId} {
+      allow list, get: if isSignedIn(); // Public query of top rankings
+      allow create: if isSignedIn() && isValidId(scoreId) && incoming().userId == request.auth.uid && isValidLeaderboardEntry(incoming());
+      allow update, delete: if false; // High scores cannot be tampered with or deleted!
+
+      function isValidLeaderboardEntry(data) {
+        return data.keys().hasAll(['userId', 'commanderName', 'score', 'stage', 'ghostId', 'createdAt'])
+          && data.keys().size() == 6
+          && data.userId is string
+          && data.userId == request.auth.uid
+          && data.commanderName is string
+          && data.commanderName.size() >= 2
+          && data.commanderName.size() <= 20
+          && data.score is int
+          && data.score >= 0
+          && data.score <= 100000000
+          && data.stage is int
+          && data.stage >= 0
+          && data.stage <= 20
+          && data.ghostId is string
+          && data.ghostId.size() <= 128
+          && data.createdAt == request.time;
+      }
+    }
+
+    // 3. Match Flight Trajectory Ghosts (/ghosts/{ghostId})
+    match /ghosts/{ghostId} {
+      allow get: if isSignedIn() && isValidId(ghostId); // Load particular ghost for duel
+      allow list: if false; // Prevent bulk list scraping of large frame data
+      allow create: if isSignedIn() && isValidId(ghostId) && incoming().userId == request.auth.uid && isValidGhost(incoming());
+      allow update, delete: if false; // Ghosts are immutable recordings
+
+      function isValidGhost(data) {
+        return data.keys().hasAll(['userId', 'commanderName', 'score', 'ghostFrames', 'createdAt'])
+          && data.keys().size() == 5
+          && data.userId is string
+          && data.userId == request.auth.uid
+          && data.commanderName is string
+          && data.commanderName.size() >= 2
+          && data.commanderName.size() <= 20
+          && data.score is int
+          && data.score >= 0
+          && data.score <= 100000000
+          && data.ghostFrames is string
+          && data.ghostFrames.size() <= 50000  // Size check to prevent Denial of Wallet
+          && data.createdAt == request.time;
+      }
+    }
+
+    // 4. Pilot Communication Chats (/chat/{messageId})
+    match /chat/{messageId} {
+      allow list, get: if isSignedIn(); // Streaming chat in pilot lobby
+      allow create: if isSignedIn() && isValidId(messageId) && incoming().userId == request.auth.uid && isValidChat(incoming());
+      allow update, delete: if false; // Logs are absolute
+
+      function isValidChat(data) {
+        return data.keys().hasAll(['userId', 'commanderName', 'message', 'createdAt'])
+          && data.keys().size() == 4
+          && data.userId is string
+          && data.userId == request.auth.uid
+          && data.commanderName is string
+          && data.commanderName.size() >= 2
+          && data.commanderName.size() <= 20
+          && data.message is string
+          && data.message.size() >= 1
+          && data.message.size() <= 150
+          && data.createdAt == request.time;
+      }
+    }
+  }
+}

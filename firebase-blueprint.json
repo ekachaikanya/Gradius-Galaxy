@@ -1,0 +1,139 @@
+{
+  "entities": {
+    "Profile": {
+      "title": "Profile",
+      "description": "User profile with game progress and commander status",
+      "type": "object",
+      "properties": {
+        "commanderName": {
+          "type": "string",
+          "description": "Custom callsign of the pilot"
+        },
+        "highScore": {
+          "type": "integer",
+          "description": "Highest score recorded by user"
+        },
+        "storyProgress": {
+          "type": "integer",
+          "description": "Story mode progress (levels completed)"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of creation"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of modification"
+        }
+      },
+      "required": ["commanderName", "highScore", "storyProgress", "createdAt", "updatedAt"]
+    },
+    "LeaderboardEntry": {
+      "title": "LeaderboardEntry",
+      "description": "An entry representing a high score submission",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "UID of the pilot"
+        },
+        "commanderName": {
+          "type": "string",
+          "description": "Callsign of the pilot"
+        },
+        "score": {
+          "type": "integer",
+          "description": "Match score attained"
+        },
+        "stage": {
+          "type": "integer",
+          "description": "Story chapter or competitive tier"
+        },
+        "ghostId": {
+          "type": "string",
+          "description": "Reference to the match ghost document"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of score"
+        }
+      },
+      "required": ["userId", "commanderName", "score", "stage", "ghostId", "createdAt"]
+    },
+    "GhostData": {
+      "title": "GhostData",
+      "description": "Compacted performance recording of Vic Viper for online duels",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "UID of the pilot"
+        },
+        "commanderName": {
+          "type": "string",
+          "description": "Callsign of the pilot"
+        },
+        "score": {
+          "type": "integer",
+          "description": "Score attained during the recorded run"
+        },
+        "ghostFrames": {
+          "type": "string",
+          "description": "Packed trajectory characters of flight: y,fire,shieldStatus per interval"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of run"
+        }
+      },
+      "required": ["userId", "commanderName", "score", "ghostFrames", "createdAt"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "Message posted in the live pilots lobby chat",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Author UID"
+        },
+        "commanderName": {
+          "type": "string",
+          "description": "Callsign of sender"
+        },
+        "message": {
+          "type": "string",
+          "description": "Body text of the message"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Posting timestamp"
+        }
+      },
+      "required": ["userId", "commanderName", "message", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/profiles/{userId}": {
+      "schema": "Profile",
+      "description": "Path for user profile records"
+    },
+    "/leaderboard/{scoreId}": {
+      "schema": "LeaderboardEntry",
+      "description": "Path for public leaderboard entries"
+    },
+    "/ghosts/{ghostId}": {
+      "schema": "GhostData",
+      "description": "Stored flight profiles of high scores for online opponent replay"
+    },
+    "/chat/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "Global live combat channel chat log"
+    }
+  }
+}

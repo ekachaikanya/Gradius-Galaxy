@@ -13,6 +13,8 @@ export interface ChatMessage {
   createdAt: any; // Firestore Timestamp
 }
 
+export type GameDifficulty = "EASY" | "NORMAL" | "HARD";
+
 export interface LeaderboardEntry {
   id: string;
   userId: string;
@@ -20,6 +22,7 @@ export interface LeaderboardEntry {
   score: number;
   stage: number;
   ghostId: string;
+  difficulty: GameDifficulty;
   createdAt: any;
 }
 

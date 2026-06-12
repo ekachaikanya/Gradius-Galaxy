@@ -14,7 +14,7 @@ service cloud.firestore {
 
     // Helper: Validates basic ID strings to prevent pollution attacks
     function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_-]+$');
     }
 
     // Helper: Extracts resource data from incoming write request safely
@@ -38,66 +38,68 @@ service cloud.firestore {
         return data.keys().hasAll(['commanderName', 'highScore', 'storyProgress', 'createdAt', 'updatedAt'])
           && data.keys().size() == 5
           && data.commanderName is string
-          && data.commanderName.size() >= 2
+          && data.commanderName.size() >= 1
           && data.commanderName.size() <= 20
-          && data.highScore is int
+          && (data.highScore is int || data.highScore is float)
           && data.highScore >= 0
           && data.highScore <= 100000000
-          && data.storyProgress is int
+          && (data.storyProgress is int || data.storyProgress is float)
           && data.storyProgress >= 0
           && data.storyProgress <= 20
           && data.createdAt is timestamp
-          && data.updatedAt == request.time;
+          && (data.updatedAt is timestamp || data.updatedAt == request.time);
       }
     }
 
     // 2. Leaderboard Entry (/leaderboard/{scoreId})
     match /leaderboard/{scoreId} {
-      allow list, get: if isSignedIn(); // Public query of top rankings
-      allow create: if isSignedIn() && isValidId(scoreId) && incoming().userId == request.auth.uid && isValidLeaderboardEntry(incoming());
+      allow list, get: if true; // Public query of top rankings for both guests and users
+      allow create: if isValidId(scoreId) && isValidLeaderboardEntry(incoming());
       allow update, delete: if false; // High scores cannot be tampered with or deleted!
 
       function isValidLeaderboardEntry(data) {
-        return data.keys().hasAll(['userId', 'commanderName', 'score', 'stage', 'ghostId', 'createdAt'])
-          && data.keys().size() == 6
+        return data.keys().hasAll(['userId', 'commanderName', 'score', 'stage', 'ghostId', 'createdAt', 'difficulty'])
+          && data.keys().size() == 7
           && data.userId is string
-          && data.userId == request.auth.uid
+          && (data.userId == "guest" || (isSignedIn() && data.userId == request.auth.uid))
           && data.commanderName is string
-          && data.commanderName.size() >= 2
+          && data.commanderName.size() >= 1
           && data.commanderName.size() <= 20
-          && data.score is int
+          && (data.score is int || data.score is float)
           && data.score >= 0
           && data.score <= 100000000
-          && data.stage is int
+          && (data.stage is int || data.stage is float)
           && data.stage >= 0
           && data.stage <= 20
+          && data.difficulty is string
+          && (data.difficulty == "EASY" || data.difficulty == "NORMAL" || data.difficulty == "HARD")
           && data.ghostId is string
           && data.ghostId.size() <= 128
-          && data.createdAt == request.time;
+          && (data.createdAt is timestamp || data.createdAt == request.time);
       }
     }
 
     // 3. Match Flight Trajectory Ghosts (/ghosts/{ghostId})
     match /ghosts/{ghostId} {
-      allow get: if isSignedIn() && isValidId(ghostId); // Load particular ghost for duel
+      allow get: if true; // Load particular ghost for duel
       allow list: if false; // Prevent bulk list scraping of large frame data
-      allow create: if isSignedIn() && isValidId(ghostId) && incoming().userId == request.auth.uid && isValidGhost(incoming());
+      allow create: if isValidId(ghostId) && isValidGhost(incoming());
       allow update, delete: if false; // Ghosts are immutable recordings
 
       function isValidGhost(data) {
         return data.keys().hasAll(['userId', 'commanderName', 'score', 'ghostFrames', 'createdAt'])
           && data.keys().size() == 5
           && data.userId is string
-          && data.userId == request.auth.uid
+          && (data.userId == "guest" || (isSignedIn() && data.userId == request.auth.uid))
           && data.commanderName is string
-          && data.commanderName.size() >= 2
+          && data.commanderName.size() >= 1
           && data.commanderName.size() <= 20
-          && data.score is int
+          && (data.score is int || data.score is float)
           && data.score >= 0
           && data.score <= 100000000
           && data.ghostFrames is string
           && data.ghostFrames.size() <= 50000  // Size check to prevent Denial of Wallet
-          && data.createdAt == request.time;
+          && (data.createdAt is timestamp || data.createdAt == request.time);
       }
     }
 

@@ -58,51 +58,71 @@ The pilot is named Commander ${commanderName || 'Viper-1'}.
 The pilot chose the following tactical preparation: "${playerChoice || 'Focus on energy distribution'}".
 Design an exciting, tense retro sci-fi narrative, including a threatening alien dialogue, tactical wingman advice, and award them a starting gameplay perk themed exactly after their description.`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: prompt,
-      config: {
-        systemInstruction: "You are an elite arcade game storyteller specializing in classic horizontal 1980s side-scrolling space shooter lore (like Gradius, R-Type, and Salamander). Deliver engaging, brief text and precise gameplay game-mechanic buffs in JSON format.",
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          required: ["storyText", "alienDialogue", "wingmanAdvice", "stageBuff"],
-          properties: {
-            storyText: {
-              type: Type.STRING,
-              description: "Sci-fi retro space briefing narrative. Max 4 short paragraphs."
-            },
-            alienDialogue: {
-              type: Type.STRING,
-              description: "Hostile transmission from the sector boss, written in all-caps alien dialect with bleeps or static. Max 2 sentences."
-            },
-            wingmanAdvice: {
-              type: Type.STRING,
-              description: "Tactical voice assistant warning about space hazards, ceiling geometry, or enemy types. Max 2 sentences."
-            },
-            stageBuff: {
+    const candidateModels = ["gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-2.5-flash", "gemini-flash-latest"];
+    let response: any = null;
+    let success = false;
+    let lastError: any = null;
+
+    for (const modelName of candidateModels) {
+      try {
+        console.log(`Attempting story generation using model: ${modelName}`);
+        response = await ai.models.generateContent({
+          model: modelName,
+          contents: prompt,
+          config: {
+            systemInstruction: "You are an elite arcade game storyteller specializing in classic horizontal 1980s side-scrolling space shooter lore (like Gradius, R-Type, and Salamander). Deliver engaging, brief text and precise gameplay game-mechanic buffs in JSON format.",
+            responseMimeType: "application/json",
+            responseSchema: {
               type: Type.OBJECT,
-              required: ["name", "description", "type", "value"],
+              required: ["storyText", "alienDialogue", "wingmanAdvice", "stageBuff"],
               properties: {
-                name: { type: Type.STRING, description: "Name of the sci-fi buff." },
-                description: { type: Type.STRING, description: "Description of the starting perk." },
-                type: { 
-                  type: Type.STRING, 
-                  description: "Perk type keyword.",
-                  enum: ["SPEED", "OPTION", "MISSILE", "SHIELD", "FIRE_RATE"] 
+                storyText: {
+                  type: Type.STRING,
+                  description: "Sci-fi retro space briefing narrative. Max 4 short paragraphs."
                 },
-                value: { type: Type.NUMBER, description: "Intensity factor, e.g., speed levels (1, 2), shield durability (3), or laser fire rate scale." }
+                alienDialogue: {
+                  type: Type.STRING,
+                  description: "Hostile transmission from the sector boss, written in all-caps alien dialect with bleeps or static. Max 2 sentences."
+                },
+                wingmanAdvice: {
+                  type: Type.STRING,
+                  description: "Tactical voice assistant warning about space hazards, ceiling geometry, or enemy types. Max 2 sentences."
+                },
+                stageBuff: {
+                  type: Type.OBJECT,
+                  required: ["name", "description", "type", "value"],
+                  properties: {
+                    name: { type: Type.STRING, description: "Name of the sci-fi buff." },
+                    description: { type: Type.STRING, description: "Description of the starting perk." },
+                    type: { 
+                      type: Type.STRING, 
+                      description: "Perk type keyword.",
+                      enum: ["SPEED", "OPTION", "MISSILE", "SHIELD", "FIRE_RATE"] 
+                    },
+                    value: { type: Type.NUMBER, description: "Intensity factor, e.g., speed levels (1, 2), shield durability (3), or laser fire rate scale." }
+                  }
+                }
               }
             }
           }
-        }
+        });
+        success = true;
+        console.log(`Story generation succeeded with model: ${modelName}`);
+        break;
+      } catch (err: any) {
+        lastError = err;
+        console.warn(`Model ${modelName} failed or was denied: ${err.message || err}`);
       }
-    });
+    }
+
+    if (!success) {
+      throw lastError || new Error("All candidate models failed during story generation");
+    }
 
     const parsedData = JSON.parse(response.text || "{}");
     res.json(parsedData);
   } catch (err: any) {
-    console.error("Gemini API error during story generation:", err);
+    console.error("All Gemini API models failed during story generation:", err);
     // Graceful fallback on error
     res.json({
       storyText: `System Alert! Stellar interference is blocking communication. Commander ${commanderName || 'Pilot'}, we are breaching Chapter ${chapter} alone. Hold steady!`,

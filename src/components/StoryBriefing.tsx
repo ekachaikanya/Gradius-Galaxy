@@ -1,10 +1,10 @@
 import React, { useState } from "react";
-import { StoryStage, StageBuff, StoryScenarioResponse } from "../types";
-import { Sparkles, Shield, Rocket, Target, Zap, Waves } from "lucide-react";
+import { StoryStage, StageBuff, StoryScenarioResponse, GameDifficulty } from "../types";
+import { Sparkles, Shield, Rocket, Target, Zap, Waves, ShieldAlert } from "lucide-react";
 
 interface StoryBriefingProps {
   commanderName: string;
-  onStartMission: (stage: StoryStage, buff: StageBuff | null) => void;
+  onStartMission: (stage: StoryStage, buff: StageBuff | null, difficulty: GameDifficulty) => void;
   onBack: () => void;
 }
 
@@ -40,6 +40,7 @@ export const SECTORS: StoryStage[] = [
 
 export default function StoryBriefing({ commanderName, onStartMission, onBack }: StoryBriefingProps) {
   const [selectedStage, setSelectedStage] = useState<StoryStage>(SECTORS[0]);
+  const [selectedDifficulty, setSelectedDifficulty] = useState<GameDifficulty>("NORMAL");
   const [playerChoice, setPlayerChoice] = useState<string>("Engage defensive deflector array shields");
   const [scenario, setScenario] = useState<StoryScenarioResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -150,10 +151,36 @@ export default function StoryBriefing({ commanderName, onStartMission, onBack }:
             </div>
           </div>
 
-          {/* 2. Tactical Preparation Choices selection */}
+          {/* 2. Combat Difficulty Level Selection */}
           <div className="space-y-2">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-orange-400 font-mono">2. Choose Tactical Buff</h3>
-            <div className="grid grid-cols-1 gap-2">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-teal-400 font-mono">2. Choose Combat Difficulty</h3>
+            <div className="grid grid-cols-3 gap-2">
+              {(["EASY", "NORMAL", "HARD"] as GameDifficulty[]).map((dif) => (
+                <button
+                  key={dif}
+                  type="button"
+                  onClick={() => setSelectedDifficulty(dif)}
+                  className={`py-2 px-1 rounded-xl border text-center transition-all flex flex-col items-center justify-center cursor-pointer ${
+                    selectedDifficulty === dif
+                      ? "bg-teal-950/30 border-teal-500 text-white shadow-lg shadow-teal-950/20"
+                      : "bg-[#090e16]/60 border-white/5 text-zinc-400 hover:border-white/10 hover:bg-[#0c1420]/60"
+                  }`}
+                >
+                  <span className="text-[11px] font-bold font-mono">
+                    {dif === "EASY" ? "🟢 EASY" : dif === "NORMAL" ? "🟡 NORMAL" : "🔴 HARD"}
+                  </span>
+                  <span className="text-[9px] text-zinc-500 font-mono mt-0.5">
+                    {dif === "EASY" ? "0.6x Speed" : dif === "NORMAL" ? "1.0x Speed" : "1.6x Speed"}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 3. Tactical Preparation Choices selection */}
+          <div className="space-y-2">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-orange-400 font-mono">3. Choose Tactical Buff</h3>
+            <div className="grid grid-cols-1 gap-1.5">
               {choices.map((ch) => {
                 const Icon = ch.icon;
                 return (
@@ -163,18 +190,18 @@ export default function StoryBriefing({ commanderName, onStartMission, onBack }:
                       setPlayerChoice(ch.label);
                       setScenario(null); // Clear previous story
                     }}
-                    className={`p-2.5 rounded-xl border text-left transition-all flex items-start space-x-3 cursor-pointer ${
+                    className={`p-2 rounded-xl border text-left transition-all flex items-start space-x-2.5 cursor-pointer ${
                       playerChoice === ch.label
                         ? "bg-orange-950/25 border-orange-500 text-white shadow-lg shadow-orange-950/10"
                         : "bg-[#090e16]/40 border-white/5 text-zinc-400 hover:border-white/10 hover:bg-[#0c1420]/40"
                     }`}
                   >
                     <div className={`p-1.5 rounded-lg mt-0.5 ${playerChoice === ch.label ? "bg-orange-500/20 text-orange-400" : "bg-black/45 text-zinc-500"}`}>
-                      <Icon size={16} />
+                      <Icon size={14} />
                     </div>
                     <div>
                       <div className="text-xs font-bold text-white">{ch.label}</div>
-                      <div className="text-[11px] text-zinc-500">{ch.desc}</div>
+                      <div className="text-[10px] text-zinc-500 leading-tight">{ch.desc}</div>
                     </div>
                   </button>
                 );
@@ -256,7 +283,7 @@ export default function StoryBriefing({ commanderName, onStartMission, onBack }:
 
               {/* Launcher Deploy trigger */}
               <button
-                onClick={() => onStartMission(selectedStage, scenario.stageBuff)}
+                onClick={() => onStartMission(selectedStage, scenario.stageBuff, selectedDifficulty)}
                 className="w-full bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-black font-display font-black uppercase text-center py-3 rounded-xl text-xs tracking-widest transition-all shadow-lg hover:shadow-cyan-400/20 cursor-pointer"
               >
                 Launch Starfighter Now ✈

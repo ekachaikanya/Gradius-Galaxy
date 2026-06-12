@@ -15,7 +15,8 @@ import {
   PowerUpCapsule,
   GameParticle,
   ScrollingStar,
-  LobbyRoom
+  LobbyRoom,
+  GameDifficulty
 } from "../types";
 
 // Sound Synthesizer using Web Audio API (Zero-dependency arcade sounds)
@@ -224,6 +225,7 @@ interface GradiusGameProps {
   pilot: PilotProfile;
   stage: StoryStage;
   buff: StageBuff | null;
+  difficulty?: GameDifficulty;
   onGameFinished: (finalScore: number, progressReached: number, ghostFramesStr: string) => void;
   onExit: () => void;
   opponentGhostFrames?: string; // If competing
@@ -237,6 +239,7 @@ export default function GradiusGame({
   pilot,
   stage,
   buff,
+  difficulty = "NORMAL",
   onGameFinished,
   onExit,
   opponentGhostFrames,
@@ -288,7 +291,11 @@ export default function GradiusGame({
 
   // Story parameters and spawner state
   const ticksPassed = useRef<number>(0);
-  const baseDifficulty = stage.baseDifficulty;
+  
+  // Calculate scaled base difficulty
+  const difficultyMultiplier = difficulty === "EASY" ? 0.6 : difficulty === "HARD" ? 1.6 : 1.0;
+  const baseDifficulty = stage.baseDifficulty * difficultyMultiplier;
+
   const stageTimeline = useRef<number>(1800); // Ticks (30 seconds) until boss spawns
   const bossSpawned = useRef<boolean>(false);
 

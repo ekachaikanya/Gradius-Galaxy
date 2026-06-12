@@ -55,13 +55,17 @@
           "type": "string",
           "description": "Reference to the match ghost document"
         },
+        "difficulty": {
+          "type": "string",
+          "description": "Difficulty level of the match (EASY, NORMAL, HARD)"
+        },
         "createdAt": {
           "type": "string",
           "format": "date-time",
           "description": "Timestamp of score"
         }
       },
-      "required": ["userId", "commanderName", "score", "stage", "ghostId", "createdAt"]
+      "required": ["userId", "commanderName", "score", "stage", "ghostId", "createdAt", "difficulty"]
     },
     "GhostData": {
       "title": "GhostData",
